@@ -542,17 +542,24 @@ class SQLCompiler(object):
                     from_params.extend(extra_params)
                 else:
                     extra_sql = ""
-                result.append('%s %s%s ON ('
-                        % (join_type, qn(name), alias_str))
+                part = '%s %s%s ON ('
+                        % (join_type, qn(name), alias_str)
                 for index, (lhs_col, rhs_col) in enumerate(join_cols):
                     if index != 0:
-                        result.append(' AND ')
-                    result.append('%s.%s = %s.%s' %
-                    (qn(lhs), qn2(lhs_col), qn(alias), qn2(rhs_col)))
-                result.append('%s)' % extra_sql)
+                        part += ' AND '
+                    part += '%s.%s = %s.%s' %
+                    (qn(lhs), qn2(lhs_col), qn(alias), qn2(rhs_col))
+                part += '%s)' % extra_sql
             else:
                 connector = '' if first else ', '
-                result.append('%s%s%s' % (connector, qn(name), alias_str))
+                #result.append('%s%s%s' % (connector, qn(name), alias_str))
+                part = '%s%s%s' % (connector, qn(name), alias_str)
+            
+            for model, hint in self.query.hints.items():
+                if model._meta.db_table == name:
+                    part += ' USE INDEX (%s)' % ', '.join(hint)
+            result.append(part)
+
             first = False
         for t in self.query.extra_tables:
             alias, unused = self.query.table_alias(t)
